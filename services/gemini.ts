@@ -1,11 +1,26 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe, UserPreferences } from "../types";
 
-const apiKey = process.env.API_KEY || '';
+// Safely access process.env to prevent "process is not defined" errors in browser
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY || '';
+    }
+  } catch (e) {
+    console.warn("Environment variable access failed");
+  }
+  return '';
+};
+
+const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]> => {
-  if (!apiKey) throw new Error("API Key missing");
+  if (!apiKey) {
+    console.error("API Key is missing. Please check your Netlify environment variables.");
+    throw new Error("API Key missing");
+  }
 
   const langInstruction = prefs.language === 'fr' 
     ? "Generate all text, titles, descriptions, and steps in French." 

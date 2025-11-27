@@ -7,6 +7,25 @@ import { InstallGuide } from './components/InstallGuide';
 import { generateRecipes, generateRecipeImage } from './services/gemini';
 import { Loader2, ArrowRight, UtensilsCrossed, Moon, Sun, Star, Heart, Menu, Clock, Smartphone } from 'lucide-react';
 
+// Helper for safe storage access
+const getStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : fallback;
+  } catch (e) {
+    console.warn('LocalStorage access failed', e);
+    return fallback;
+  }
+};
+
+const setStorage = (key: string, value: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('LocalStorage write failed', e);
+  }
+};
+
 const App = () => {
   const [appState, setAppState] = useState<AppState>(AppState.INTRO);
   const [userName, setUserName] = useState('');
@@ -25,17 +44,23 @@ const App = () => {
   // Initialize
   useEffect(() => {
     // Load persisted settings
-    const storedFavorites = localStorage.getItem('favorites');
-    if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
+    const storedFavorites = getStorage<Recipe[]>('favorites', []);
+    setFavorites(storedFavorites);
     
-    const storedLang = localStorage.getItem('language');
-    if (storedLang) setLanguage(storedLang as Language);
+    // Check language
+    try {
+      const storedLang = localStorage.getItem('language');
+      if (storedLang) setLanguage(storedLang as Language);
+    } catch(e) {}
 
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
-    }
+    // Check theme
+    try {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      }
+    } catch(e) {}
 
     if (appState === AppState.INTRO) {
       const timer = setTimeout(() => {
@@ -47,13 +72,14 @@ const App = () => {
 
   // Toggle Theme
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (!isDark) {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    if (newIsDark) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      try { localStorage.setItem('theme', 'dark'); } catch(e) {}
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      try { localStorage.setItem('theme', 'light'); } catch(e) {}
     }
   };
 
@@ -61,7 +87,7 @@ const App = () => {
   const toggleLanguage = () => {
     const newLang = language === 'en' ? 'fr' : 'en';
     setLanguage(newLang);
-    localStorage.setItem('language', newLang);
+    try { localStorage.setItem('language', newLang); } catch(e) {}
   };
 
   // Toggle Favorite
@@ -73,7 +99,7 @@ const App = () => {
       newFavorites = [...favorites, recipe];
     }
     setFavorites(newFavorites);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    setStorage('favorites', newFavorites);
   };
 
   const handleNameSubmit = (e: React.FormEvent) => {
@@ -144,7 +170,8 @@ const App = () => {
   const renderIntro = () => (
     <div className="h-screen flex flex-col items-center justify-center bg-n-base dark:bg-n-dark-base">
       <Logo animate={true} className="w-40 h-40" />
-      <h1 className="mt-8 text-4xl font-serif font-bold text-n-dark dark:text-n-cream opacity-0 animate-[fadeIn_0.5s_ease-out_2s_forwards]">
+      {/* Use standard tailwind class from config instead of arbitrary value to avoid parser issues */}
+      <h1 className="mt-8 text-4xl font-serif font-bold text-n-dark dark:text-n-cream opacity-0 animate-delayed-fade">
         Nourish
       </h1>
     </div>
