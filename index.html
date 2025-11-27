@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Nourish</title>
+    
+    <!-- PWA / App Icon Configuration -->
+    <meta name="theme-color" content="#F8F4E9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1a2e25" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Nourish">
+
+    <!-- Icon: Orange N on Dark Green Background -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg width='512' height='512' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%232F614D'/%3E%3Cpath d='M30 80V20L70 80V20' stroke='%23E87D33' stroke-width='12' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg width='512' height='512' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100' height='100' fill='%232F614D'/%3E%3Cpath d='M30 80V20L70 80V20' stroke='%23E87D33' stroke-width='12' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+    
+    <!-- Inline Manifest for PWA installation -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Nourish - AI Meal Prep","short_name":"Nourish","start_url":".","display":"standalone","background_color":"#F8F4E9","theme_color":"#2F614D","icons":[{"src":"data:image/svg+xml,%3Csvg width=%27512%27 height=%27512%27 viewBox=%270 0 100 100%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%232F614D%27/%3E%3Cpath d=%27M30 80V20L70 80V20%27 stroke=%27%23E87D33%27 stroke-width=%2712%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 fill=%27none%27/%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml"}]}' />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['DM Sans', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
+            },
+            colors: {
+              n: {
+                orange: '#E87D33',
+                olive: '#5A7D42',
+                sage: '#99C273',
+                cream: '#F1E3C4',
+                yellow: '#F2E99A',
+                dark: '#2F614D',
+                base: '#F8F4E9',
+                // Dark mode specific helpers
+                'dark-base': '#1a2e25',
+                'dark-card': '#243c31',
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 1s ease-out forwards',
+              'slide-up': 'slideUp 0.8s ease-out forwards',
+              'draw': 'draw 2s ease-in-out forwards',
+              'bounce-slow': 'bounce 3s infinite',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #F8F4E9;
+        color: #2F614D;
+        transition: background-color 0.3s, color 0.3s;
+        /* Prevent elastic scrolling on iOS */
+        overscroll-behavior-y: none;
+      }
+      .dark body {
+        background-color: #1a2e25;
+        color: #F1E3C4;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #99C273; 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #5A7D42; 
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
