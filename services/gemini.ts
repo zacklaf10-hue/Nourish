@@ -36,6 +36,9 @@ const getApiKey = () => {
 const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey: apiKey });
 
+// Helper to pause execution
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]> => {
   if (!apiKey) {
     console.error("API Key is missing. Checked: VITE_API_KEY, REACT_APP_API_KEY, API_KEY.");
@@ -59,7 +62,7 @@ export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]>
     CRITICAL: Provide an estimated price range for the ingredients needed to make this dish in France (EUR), based on average prices at supermarkets like Carrefour, Lidl, or Auchan. Format as "10-15 €".
 
     Return a list of detailed recipes. 
-    Include a specific, descriptive 'imagePrompt' that describes the visual appearance of the final dish for an AI image generator (e.g., "overhead shot of golden crispy tofu with broccoli...").
+    Include a specific, descriptive 'imagePrompt' that describes the visual appearance of the final dish for an AI image generator (e.g., "overhead shot of golden crispy tofu with broccoli, photorealistic food photography, 4k").
   `;
 
   try {
@@ -103,25 +106,45 @@ export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]>
   }
 };
 
-export const generateRecipeImage = async (imagePrompt: string): Promise<string | null> => {
+export const generateRecipeImage = async (imagePrompt: string, retries = 3): Promise<string | null> => {
   if (!apiKey) return null;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image', 
-      contents: {
-        parts: [{ text: imagePrompt }],
-      },
-      config: {}
-    });
-
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      // Add a small initial delay to prevent instant hammering if called in a loop
+      if (attempt > 1) {
+        const delay = attempt * 2000; // 2s, 4s, 6s wait
+        console.log(`Retrying image generation (Attempt ${attempt}). Waiting ${delay}ms...`);
+        await wait(delay);
       }
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image', 
+        contents: {
+          parts: [{ text: imagePrompt }],
+        },
+        config: {}
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+      // If we got a response but no image data, break loop to avoid infinite retries on bad prompts
+      break; 
+    } catch (error: any) {
+      console.warn(`Image generation attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt, return null
+      if (attempt === retries) {
+        console.error("Max retries reached for image generation.");
+        return null;
+      }
+      
+      // If error is NOT a 429 (Too Many Requests), might not want to retry? 
+      // Actually, for stability, let's retry most errors except maybe authentication ones.
     }
-  } catch (error) {
-    console.error("Image generation failed", error);
   }
   return null;
 };

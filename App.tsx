@@ -114,7 +114,7 @@ const App = () => {
     setAppState(AppState.GENERATING);
     setLoading(true);
     setError('');
-    // Clear previous images to avoid showing old ones
+    // Clear previous images
     setRecipeImages({});
 
     try {
@@ -124,14 +124,18 @@ const App = () => {
       }
       setRecipes(generatedRecipes);
       setAppState(AppState.RESULTS);
+      setLoading(false); // Stop main loader, switch to progressive loading
       
-      // Sequential Image Loading to prevent Rate Limiting / Freezing
-      // We do this asynchronously without awaiting the whole batch so the UI shows up immediately
+      // Sequential Image Loading with Retries
+      // We run this AFTER setting state so the user sees text immediately
       (async () => {
         for (const recipe of generatedRecipes) {
           try {
+            // Small pause between requests to be nice to the API rate limiter
+            await new Promise(r => setTimeout(r, 1000));
+            
             const imageUrl = await generateRecipeImage(recipe.imagePrompt);
-            setRecipeImages(prev => ({ ...prev, [recipe.id]: imageUrl })); // imageUrl is string | null
+            setRecipeImages(prev => ({ ...prev, [recipe.id]: imageUrl })); 
           } catch (e) {
             console.error(`Failed to load image for ${recipe.title}`, e);
             setRecipeImages(prev => ({ ...prev, [recipe.id]: null })); // Mark as failed
@@ -141,6 +145,7 @@ const App = () => {
       
     } catch (err: any) {
       console.error(err);
+      setLoading(false);
       
       // Custom error messaging for API Key issues
       if (err.message && err.message.includes("API Key")) {
@@ -150,8 +155,6 @@ const App = () => {
       }
       
       setAppState(AppState.PREFERENCES);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -186,7 +189,6 @@ const App = () => {
   const renderIntro = () => (
     <div className="h-screen flex flex-col items-center justify-center bg-n-base dark:bg-n-dark-base">
       <Logo animate={true} className="w-40 h-40" />
-      {/* Use standard tailwind class from config instead of arbitrary value to avoid parser issues */}
       <h1 className="mt-8 text-4xl font-serif font-bold text-n-dark dark:text-n-cream opacity-0 animate-delayed-fade">
         Nourish
       </h1>
@@ -288,18 +290,18 @@ const App = () => {
                   <img 
                     src={recipeImages[recipe.id]!} 
                     alt={recipe.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 animate-fade-in"
                   />
                 ) : recipeImages[recipe.id] === null ? (
-                   // Fallback when image fails to load
+                   // Fallback when image REALLY fails to load after retries
                    <div className="w-full h-full flex flex-col items-center justify-center bg-n-cream/30 dark:bg-n-dark-base/30">
                      <ChefHat className="text-n-olive/20 dark:text-n-sage/20 mb-2" size={32} />
                      <span className="text-xs text-n-olive/40 dark:text-n-sage/40 font-serif italic">Nourish Kitchen</span>
                    </div>
                 ) : (
-                  // Loading State
-                  <div className="w-full h-full flex items-center justify-center bg-n-cream/50 dark:bg-n-dark-base/50">
-                    <Loader2 className="animate-spin text-n-olive dark:text-n-sage" />
+                  // Loading State - SKELETON LOADER
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 animate-pulse">
+                     <div className="w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 animate-slide-up opacity-50"></div>
                   </div>
                 )}
                 
