@@ -1,6 +1,6 @@
 import React from 'react';
 import { Recipe, Language, TRANSLATIONS } from '../types';
-import { Clock, Flame, Dumbbell, ArrowLeft, CheckCircle, Star, Coins } from 'lucide-react';
+import { Clock, Flame, Dumbbell, ArrowLeft, CheckCircle, Star, Coins, ChefHat } from 'lucide-react';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -29,9 +29,16 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
         <div className="relative h-64 md:h-80 bg-n-cream dark:bg-n-dark-base group">
           {imageUrl ? (
             <img src={imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
+          ) : imageUrl === null ? (
+            // Fallback for failed image
+            <div className="w-full h-full flex flex-col items-center justify-center text-n-olive/50 dark:text-n-sage/50">
+              <ChefHat size={48} className="mb-2 opacity-50" />
+              <span className="text-lg font-serif italic opacity-70">Nourish Kitchen</span>
+            </div>
           ) : (
+            // Loading State
             <div className="w-full h-full flex items-center justify-center text-n-olive/50 dark:text-n-sage/50">
-              <span className="text-lg">Generating delicious visuals...</span>
+              <span className="text-lg animate-pulse">Creating delicious visuals...</span>
             </div>
           )}
           

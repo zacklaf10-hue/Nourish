@@ -5,7 +5,7 @@ import { PreferenceForm } from './components/PreferenceForm';
 import { RecipeDetail } from './components/RecipeDetail';
 import { InstallGuide } from './components/InstallGuide';
 import { generateRecipes, generateRecipeImage } from './services/gemini';
-import { Loader2, ArrowRight, UtensilsCrossed, Moon, Sun, Star, Heart, Menu, Clock, Smartphone } from 'lucide-react';
+import { Loader2, ArrowRight, UtensilsCrossed, Moon, Sun, Star, Heart, Menu, Clock, Smartphone, ChefHat } from 'lucide-react';
 
 // Helper for safe storage access
 const getStorage = <T,>(key: string, fallback: T): T => {
@@ -31,7 +31,8 @@ const App = () => {
   const [userName, setUserName] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [recipeImages, setRecipeImages] = useState<Record<string, string>>({});
+  // Store string url or null (failed)
+  const [recipeImages, setRecipeImages] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -113,6 +114,8 @@ const App = () => {
     setAppState(AppState.GENERATING);
     setLoading(true);
     setError('');
+    // Clear previous images to avoid showing old ones
+    setRecipeImages({});
 
     try {
       const generatedRecipes = await generateRecipes(prefs);
@@ -122,13 +125,19 @@ const App = () => {
       setRecipes(generatedRecipes);
       setAppState(AppState.RESULTS);
       
-      // Lazy load images
-      generatedRecipes.forEach(async (recipe) => {
-        const imageUrl = await generateRecipeImage(recipe.imagePrompt);
-        if (imageUrl) {
-          setRecipeImages(prev => ({ ...prev, [recipe.id]: imageUrl }));
+      // Sequential Image Loading to prevent Rate Limiting / Freezing
+      // We do this asynchronously without awaiting the whole batch so the UI shows up immediately
+      (async () => {
+        for (const recipe of generatedRecipes) {
+          try {
+            const imageUrl = await generateRecipeImage(recipe.imagePrompt);
+            setRecipeImages(prev => ({ ...prev, [recipe.id]: imageUrl })); // imageUrl is string | null
+          } catch (e) {
+            console.error(`Failed to load image for ${recipe.title}`, e);
+            setRecipeImages(prev => ({ ...prev, [recipe.id]: null })); // Mark as failed
+          }
         }
-      });
+      })();
       
     } catch (err: any) {
       console.error(err);
@@ -277,11 +286,18 @@ const App = () => {
               <div className="h-48 bg-n-cream dark:bg-n-dark-base relative overflow-hidden">
                 {recipeImages[recipe.id] ? (
                   <img 
-                    src={recipeImages[recipe.id]} 
+                    src={recipeImages[recipe.id]!} 
                     alt={recipe.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
+                ) : recipeImages[recipe.id] === null ? (
+                   // Fallback when image fails to load
+                   <div className="w-full h-full flex flex-col items-center justify-center bg-n-cream/30 dark:bg-n-dark-base/30">
+                     <ChefHat className="text-n-olive/20 dark:text-n-sage/20 mb-2" size={32} />
+                     <span className="text-xs text-n-olive/40 dark:text-n-sage/40 font-serif italic">Nourish Kitchen</span>
+                   </div>
                 ) : (
+                  // Loading State
                   <div className="w-full h-full flex items-center justify-center bg-n-cream/50 dark:bg-n-dark-base/50">
                     <Loader2 className="animate-spin text-n-olive dark:text-n-sage" />
                   </div>
