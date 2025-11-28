@@ -1,25 +1,26 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe, UserPreferences } from "../types";
 
-// Safely access process.env to prevent "process is not defined" errors in browser
+// Robust API Key retrieval that works with bundlers (replacement) 
+// and runtime environments (process object), while avoiding ReferenceErrors.
 const getApiKey = () => {
   try {
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env.API_KEY || '';
-    }
+    return process.env.API_KEY || '';
   } catch (e) {
-    console.warn("Environment variable access failed");
+    // This catches "ReferenceError: process is not defined" in browsers
+    // where the bundler hasn't replaced the variable.
+    console.warn("API Key access failed or variable not set.");
+    return "";
   }
-  return '';
 };
 
 const apiKey = getApiKey();
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]> => {
   if (!apiKey) {
     console.error("API Key is missing. Please check your Netlify environment variables.");
-    throw new Error("API Key missing");
+    throw new Error("API Key is missing. Please add API_KEY to Netlify environment variables.");
   }
 
   const langInstruction = prefs.language === 'fr' 
@@ -42,44 +43,44 @@ export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]>
     Include a specific, descriptive 'imagePrompt' that describes the visual appearance of the final dish for an AI image generator (e.g., "overhead shot of golden crispy tofu with broccoli...").
   `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING },
-            title: { type: Type.STRING },
-            description: { type: Type.STRING },
-            timeToCook: { type: Type.NUMBER, description: "Total time in minutes" },
-            calories: { type: Type.NUMBER },
-            protein: { type: Type.NUMBER, description: "In grams" },
-            carbs: { type: Type.NUMBER, description: "In grams" },
-            fats: { type: Type.NUMBER, description: "In grams" },
-            ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
-            toolsNeeded: { type: Type.ARRAY, items: { type: Type.STRING } },
-            steps: { type: Type.ARRAY, items: { type: Type.STRING } },
-            imagePrompt: { type: Type.STRING },
-            priceEstimate: { type: Type.STRING, description: "Estimated price range in Euros (e.g. 12-15 €)" },
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              title: { type: Type.STRING },
+              description: { type: Type.STRING },
+              timeToCook: { type: Type.NUMBER, description: "Total time in minutes" },
+              calories: { type: Type.NUMBER },
+              protein: { type: Type.NUMBER, description: "In grams" },
+              carbs: { type: Type.NUMBER, description: "In grams" },
+              fats: { type: Type.NUMBER, description: "In grams" },
+              ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
+              toolsNeeded: { type: Type.ARRAY, items: { type: Type.STRING } },
+              steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+              imagePrompt: { type: Type.STRING },
+              priceEstimate: { type: Type.STRING, description: "Estimated price range in Euros (e.g. 12-15 €)" },
+            },
+            required: ["id", "title", "description", "timeToCook", "calories", "protein", "steps", "imagePrompt", "priceEstimate"],
           },
-          required: ["id", "title", "description", "timeToCook", "calories", "protein", "steps", "imagePrompt", "priceEstimate"],
         },
       },
-    },
-  });
+    });
 
-  const text = response.text;
-  if (!text) return [];
-  
-  try {
+    const text = response.text;
+    if (!text) return [];
+    
     return JSON.parse(text) as Recipe[];
-  } catch (e) {
-    console.error("Failed to parse recipe JSON", e);
-    return [];
+  } catch (error) {
+    console.error("Recipe generation failed:", error);
+    throw error;
   }
 };
 

@@ -130,9 +130,13 @@ const App = () => {
         }
       });
       
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("We couldn't generate recipes at this moment. Please check your connection or try again.");
+      // Show specific error if it's about the API key, otherwise generic
+      const msg = err.message && (err.message.includes("API Key") || err.message.includes("Netlify")) 
+        ? err.message 
+        : "We couldn't generate recipes at this moment. Please check your connection or try again.";
+      setError(msg);
       setAppState(AppState.PREFERENCES);
     } finally {
       setLoading(false);
@@ -330,7 +334,7 @@ const App = () => {
         <div className="min-h-screen px-4 py-8 pt-20">
            <header className="flex justify-between items-center max-w-xl mx-auto mb-8">
             <h2 className="text-lg font-bold text-n-dark dark:text-n-cream opacity-50">{userName}</h2>
-            {error && <div className="text-red-500 text-sm bg-red-100 px-3 py-1 rounded-lg">{error}</div>}
+            {error && <div className="text-red-500 text-sm bg-red-100 px-3 py-1 rounded-lg animate-pulse">{error}</div>}
            </header>
            <PreferenceForm initialName={userName} language={language} onSubmit={handleFormSubmit} />
         </div>
