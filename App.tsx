@@ -132,11 +132,14 @@ const App = () => {
       
     } catch (err: any) {
       console.error(err);
-      // Show specific error if it's about the API key, otherwise generic
-      const msg = err.message && (err.message.includes("API Key") || err.message.includes("Netlify")) 
-        ? err.message 
-        : "We couldn't generate recipes at this moment. Please check your connection or try again.";
-      setError(msg);
+      
+      // Custom error messaging for API Key issues
+      if (err.message && err.message.includes("API Key")) {
+        setError("Setup Required: Please rename your Netlify variable to VITE_API_KEY and Trigger a Redeploy.");
+      } else {
+        setError("We couldn't generate recipes at this moment. Please check your connection or try again.");
+      }
+      
       setAppState(AppState.PREFERENCES);
     } finally {
       setLoading(false);
@@ -334,7 +337,7 @@ const App = () => {
         <div className="min-h-screen px-4 py-8 pt-20">
            <header className="flex justify-between items-center max-w-xl mx-auto mb-8">
             <h2 className="text-lg font-bold text-n-dark dark:text-n-cream opacity-50">{userName}</h2>
-            {error && <div className="text-red-500 text-sm bg-red-100 px-3 py-1 rounded-lg animate-pulse">{error}</div>}
+            {error && <div className="text-red-500 font-bold text-sm bg-red-100 dark:bg-red-900/50 dark:text-red-200 px-4 py-3 rounded-lg animate-pulse border border-red-200 dark:border-red-800 shadow-sm">{error}</div>}
            </header>
            <PreferenceForm initialName={userName} language={language} onSubmit={handleFormSubmit} />
         </div>

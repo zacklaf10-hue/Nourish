@@ -1,17 +1,36 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Recipe, UserPreferences } from "../types";
 
-// Robust API Key retrieval that works with bundlers (replacement) 
-// and runtime environments (process object), while avoiding ReferenceErrors.
+// Robust API Key retrieval that checks multiple standard conventions
+// (Vite, Create React App, and standard process.env)
 const getApiKey = () => {
+  let key = '';
+
+  // 1. Try Vite standard (import.meta.env)
   try {
-    return process.env.API_KEY || '';
-  } catch (e) {
-    // This catches "ReferenceError: process is not defined" in browsers
-    // where the bundler hasn't replaced the variable.
-    console.warn("API Key access failed or variable not set.");
-    return "";
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      key = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY || '';
+    }
+  } catch (e) {}
+
+  // 2. If not found, try process.env (Node/Webpack/CRA/Netlify default)
+  if (!key) {
+    try {
+      if (typeof process !== 'undefined' && process.env) {
+        key = process.env.VITE_API_KEY || 
+              process.env.REACT_APP_API_KEY || 
+              process.env.API_KEY || 
+              process.env.APA_KEY || // Keep fallback for typo
+              '';
+      }
+    } catch (e) {
+      console.warn("Environment variable access failed.");
+    }
   }
+
+  return key;
 };
 
 const apiKey = getApiKey();
@@ -19,8 +38,8 @@ const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]> => {
   if (!apiKey) {
-    console.error("API Key is missing. Please check your Netlify environment variables.");
-    throw new Error("API Key is missing. Please add API_KEY to Netlify environment variables.");
+    console.error("API Key is missing. Checked: VITE_API_KEY, REACT_APP_API_KEY, API_KEY.");
+    throw new Error("API Key is missing.");
   }
 
   const langInstruction = prefs.language === 'fr' 
