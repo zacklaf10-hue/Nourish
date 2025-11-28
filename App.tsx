@@ -126,19 +126,19 @@ const App = () => {
       setAppState(AppState.RESULTS);
       setLoading(false); // Stop main loader, switch to progressive loading
       
-      // Sequential Image Loading with Retries
-      // We run this AFTER setting state so the user sees text immediately
+      // Sequential Image Loading with Fallback
       (async () => {
         for (const recipe of generatedRecipes) {
           try {
-            // Small pause between requests to be nice to the API rate limiter
-            await new Promise(r => setTimeout(r, 1000));
+            // Small pause between requests
+            await new Promise(r => setTimeout(r, 800));
             
             const imageUrl = await generateRecipeImage(recipe.imagePrompt);
+            // Even if fallback returns null (unlikely), we set it so loading skeleton stops
             setRecipeImages(prev => ({ ...prev, [recipe.id]: imageUrl })); 
           } catch (e) {
             console.error(`Failed to load image for ${recipe.title}`, e);
-            setRecipeImages(prev => ({ ...prev, [recipe.id]: null })); // Mark as failed
+            setRecipeImages(prev => ({ ...prev, [recipe.id]: null }));
           }
         }
       })();
@@ -149,7 +149,7 @@ const App = () => {
       
       // Custom error messaging for API Key issues
       if (err.message && err.message.includes("API Key")) {
-        setError("Setup Required: Please rename your Netlify variable to VITE_API_KEY and Trigger a Redeploy.");
+        setError("⚠️ NETLIFY CONFIG ERROR: Rename your environment variable to 'VITE_API_KEY' and Redeploy.");
       } else {
         setError("We couldn't generate recipes at this moment. Please check your connection or try again.");
       }
@@ -293,7 +293,7 @@ const App = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 animate-fade-in"
                   />
                 ) : recipeImages[recipe.id] === null ? (
-                   // Fallback when image REALLY fails to load after retries
+                   // Fallback when image REALLY fails to load (should be rare with pollinations)
                    <div className="w-full h-full flex flex-col items-center justify-center bg-n-cream/30 dark:bg-n-dark-base/30">
                      <ChefHat className="text-n-olive/20 dark:text-n-sage/20 mb-2" size={32} />
                      <span className="text-xs text-n-olive/40 dark:text-n-sage/40 font-serif italic">Nourish Kitchen</span>

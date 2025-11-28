@@ -42,7 +42,7 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]> => {
   if (!apiKey) {
     console.error("API Key is missing. Checked: VITE_API_KEY, REACT_APP_API_KEY, API_KEY.");
-    throw new Error("API Key is missing.");
+    throw new Error("API Key is missing. Please ensure VITE_API_KEY is set in Netlify.");
   }
 
   const langInstruction = prefs.language === 'fr' 
@@ -106,45 +106,45 @@ export const generateRecipes = async (prefs: UserPreferences): Promise<Recipe[]>
   }
 };
 
-export const generateRecipeImage = async (imagePrompt: string, retries = 3): Promise<string | null> => {
-  if (!apiKey) return null;
+export const generateRecipeImage = async (imagePrompt: string, retries = 2): Promise<string | null> => {
+  // Strategy: Try Gemini first (High Quality). If it fails or API Key is missing, 
+  // fallback to Pollinations AI (Guaranteed Image).
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      // Add a small initial delay to prevent instant hammering if called in a loop
-      if (attempt > 1) {
-        const delay = attempt * 2000; // 2s, 4s, 6s wait
-        console.log(`Retrying image generation (Attempt ${attempt}). Waiting ${delay}ms...`);
-        await wait(delay);
-      }
+  // 1. Try Google Gemini
+  if (apiKey) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 1) await wait(attempt * 1000);
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image', 
-        contents: {
-          parts: [{ text: imagePrompt }],
-        },
-        config: {}
-      });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image', 
+          contents: {
+            parts: [{ text: imagePrompt }],
+          },
+          config: {}
+        });
 
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
+        for (const part of response.candidates?.[0]?.content?.parts || []) {
+          if (part.inlineData) {
+            return `data:image/png;base64,${part.inlineData.data}`;
+          }
         }
+      } catch (error: any) {
+        console.warn(`Gemini Image generation attempt ${attempt} failed:`, error.message);
+        // Continue to retry loop or fallback
       }
-      // If we got a response but no image data, break loop to avoid infinite retries on bad prompts
-      break; 
-    } catch (error: any) {
-      console.warn(`Image generation attempt ${attempt} failed:`, error.message);
-      
-      // If it's the last attempt, return null
-      if (attempt === retries) {
-        console.error("Max retries reached for image generation.");
-        return null;
-      }
-      
-      // If error is NOT a 429 (Too Many Requests), might not want to retry? 
-      // Actually, for stability, let's retry most errors except maybe authentication ones.
     }
   }
-  return null;
+
+  // 2. Fallback: Pollinations AI
+  // This ensures the user ALWAYS gets an image, even if quota is exceeded or API key is bad.
+  console.log("Using fallback image generator (Pollinations)...");
+  try {
+    const safePrompt = encodeURIComponent(`${imagePrompt} photorealistic food photography 4k`);
+    // Add a random seed to prevent caching issues if same prompt is used
+    const seed = Math.floor(Math.random() * 1000);
+    return `https://image.pollinations.ai/prompt/${safePrompt}?nologo=true&private=true&seed=${seed}&width=1024&height=1024&model=flux`;
+  } catch (e) {
+    return null;
+  }
 };
